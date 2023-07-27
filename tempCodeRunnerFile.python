@@ -1,0 +1,125 @@
+# %%
+# Import the libraries
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib
+import matplotlib.pyplot as plt
+sns.set()
+
+# %%
+# Loading the Data
+
+df = pd.read_csv('train.csv', index_col=False,delimiter=';')
+# df.columns = ['id','months_since_last_donation','num_donations','vol_donations','months_since_first_donation', 'class']
+test = pd.read_csv("test.csv")
+# test.columns = ['id','months_since_last_donation','num_donations','vol_donations','months_since_first_donation']
+# IDtest = test["id"]
+print("Shape :",df.shape)
+print("Describe :",df.describe())
+print("Null_values :",df.isnull().sum())
+df.head(5)
+
+# %%
+
+df_numerical = df.copy()
+
+# %%
+column = ['job', 'marital', 'education', 'default', 'housing',
+       'loan', 'contact','month','poutcome', 'y']
+
+# %%
+for i in range(len(column)):
+    print(f"{column[i]},{df[column[i]].unique()} :",len(df[column[i]].unique()))
+
+# %%
+df_numerical['y'] = df_numerical['y'].map({'yes':1, 'no':0})
+
+# %%
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+variables = df_numerical[[ 'age','marital', 'education', 'default', 'housing',
+       'loan', 'contact','poutcome', 'y']]
+vif = pd.DataFrame()
+vif['VIF'] = [variance_inflation_factor(variables.values,i) for i in range(variables.shape[1])]
+vif['features'] = variables.columns
+vif
+
+# %%
+g = sns.heatmap(df_numerical[['age', 'job', 'marital', 'education', 'default', 'balance', 'housing',
+       'loan','y']].corr(),annot=True, fmt = ".2f", cmap = "coolwarm") 
+
+
+# %%
+g = sns.heatmap(df_numerical[ ['duration', 'campaign', 'pdays','previous', 'poutcome', 'day', 'month', 'contact', 'y']].corr(),annot=True, fmt = ".2f", cmap = "coolwarm") 
+
+# %%
+# Checkpoint-1
+df_outliers = df.copy()
+
+# %%
+# Calculate the quartiles for each column in the dataframe
+Q1 = df_outliers.quantile(0.25)
+Q3 = df_outliers.quantile(0.75)
+
+# Calculate the interquartile range (IQR) for each column
+IQR = Q3 - Q1
+
+# Define the lower and upper bounds for considering a data point an outlier
+lower_bound = Q1 - 1.5 * IQR
+upper_bound = Q3 + 1.5 * IQR
+
+# Identify the data points that are outliers
+outliers = df_outliers[(df_outliers < lower_bound) | (df_outliers > upper_bound)].dropna(how='all')
+
+# Remove the outliers from the dataframe
+df_without_outliers = df_outliers.drop(outliers.index)
+df_without_outliers.head()
+print(df_without_outliers.shape)
+
+# %%
+# Reseting the index
+df_without_outliers=df_without_outliers.reset_index(drop=True)
+
+# %%
+# Checkpoint -2
+df_dummies = df_without_outliers.copy()
+
+# %%
+df_dummies = pd.get_dummies(df_dummies,drop_first=True)
+df_dummies.head()
+
+# %%
+df_dummies.columns
+
+# %% [markdown]
+# ## Feature Selection
+
+# %%
+x = df_dummies[['age', 'balance', 'day', 'duration', 'campaign', 'pdays', 'previous',
+       'job_blue-collar', 'job_entrepreneur', 'job_housemaid',
+       'job_management', 'job_retired', 'job_self-employed', 'job_services',
+       'job_student', 'job_technician', 'job_unemployed', 'job_unknown',
+       'marital_married', 'marital_single', 'education_secondary',
+       'education_tertiary', 'education_unknown', 'default_yes', 'housing_yes',
+       'loan_yes', 'contact_telephone', 'contact_unknown', 'month_aug',
+       'month_dec', 'month_feb', 'month_jan', 'month_jul', 'month_jun',
+       'month_mar', 'month_may', 'month_nov', 'month_oct', 'month_sep']]
+y = df_dummies['y_yes']
+
+# %%
+from sklearn.feature_selection import f_regression
+f_regression(x,y)
+p_values = f_regression(x,y)[1]
+p_values
+
+
+# %% [markdown]
+# ## Feature Scaling
+
+# %%
+from sklearn.preprocessing import StandardScaler
+scaler = StandardScaler()
+scaler.fit(x)
+x_scaled = scaler.transform(x)
+
+
